@@ -1,4 +1,4 @@
-
+## A draft demonstration of how to build a pipeline of event extraction & temporal extraction (timeline construction / extraction of sequence of events)
 - conda create --prefix /shared/why16gzl/Environments/te_env python=3.6
 - conda activate /shared/why16gzl/Environments/te_env
 - pip install -r /shared/why16gzl/Environments/te_env/requirements_time.txt
