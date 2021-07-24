@@ -1,34 +1,22 @@
 from nltk.corpus import wordnet as wn
 
 def verb_or_not(word):
+    '''
+    # AN EXAMPLE USAGE: Determine whether a word is a verb (that can be potentially treated as an event)
+    words = ['left', 'led', 'Food', 'temperature', 'sicknesses']
+    for w in words:
+        print(verb_or_not(w))
+    '''
     for meaning in wn.synsets(word):
         if meaning.pos() == 'v':
             return 1
     return 0
 
-'''
-# AN EXAMPLE
-words = ['left', 'led', 'Food', 'temperature', 'sicknesses']
-for w in words:
-    print(verb_or_not(w))
-'''
 
 import json
 import requests
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
-
-'''
-def sent_end_pos(sentences):
-    # end char corresponds to the space after the sentence, but not the period
-    end_pos = []
-    count = 0
-    for sent in sentences:
-        count += len(sent)
-        end_pos.append(count)
-        count += 1
-    return end_pos
-'''
 
 def ee_to_ta(file_name, extracted_events):
     '''
@@ -113,6 +101,15 @@ def fullTextDuration(ta, out_f):
 
 import operator
 def order_by(origin, ee):
+    '''
+    Given the relations between each pair of events temporally, and also the distance between them
+    We can construct a sequence of events
+    On an axis, the event "origin" happens at time 0, 
+    if event A is before "origin" by distance of x, it happens at -x
+    We can choose each event as an origin
+    And induce n possible sequences of temporally ordered events
+    We choose the most possible sequence that gets most votes
+    '''
     event_map = {origin: 0}
     for relation in ee['views'][0]['viewData'][0]['relations']:
         if relation['srcConstituent'] == origin or relation['targetConstituent'] == origin:
@@ -128,7 +125,6 @@ def order_by(origin, ee):
                     event_map[relation['srcConstituent']] = relation['properties']['distance']
                     
     sorted_e = sorted(event_map.items(), key=operator.itemgetter(1))
-    
     return [m[0] for m in sorted_e]
 
 
