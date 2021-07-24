@@ -16,6 +16,7 @@ def verb_or_not(word):
 import json
 import requests
 import pprint
+from datetime import datetime
 pp = pprint.PrettyPrinter(indent=4)
 
 def ee_to_ta(file_name, extracted_events):
@@ -151,5 +152,7 @@ with open(json_file) as f:
                 possible_timeline[temp_order] += 1
 
         ta['views'][0]['viewData'][0]['temporalOrder'] = max(possible_timeline.items(), key=operator.itemgetter(1))[0]
+        now = datetime.now()
+        ta['timestamp'] = now.strftime("%d/%m/%Y %H:%M:%S")
         with open(out_f, 'w') as outfile:
             json.dump(ta, outfile)
