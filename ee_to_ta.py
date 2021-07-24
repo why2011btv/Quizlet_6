@@ -1,3 +1,18 @@
+from nltk.corpus import wordnet as wn
+
+def verb_or_not(word):
+    for meaning in wn.synsets(word):
+        if meaning.pos() == 'v':
+            return 1
+    return 0
+
+'''
+# AN EXAMPLE
+words = ['left', 'led', 'Food', 'temperature', 'sicknesses']
+for w in words:
+    print(verb_or_not(w))
+'''
+
 import json
 import requests
 import pprint
@@ -49,15 +64,17 @@ def ee_to_ta(file_name, extracted_events):
             text += ' '
             sentEndPos.append(len(text))
         for event in sent:
-            constituents.append({"start": event['trigger']['position'][0], \
-                                 "end": event['trigger']['position'][1], \
-                                 "label": "event", \
-                                 "properties": {'sentence_id': sentence_id, \
-                                                'predicate': ' '.join(sent[0]['tokens'][event['trigger']['position'][0]:event['trigger']['position'][1]]),\
-                                                'SenseNumber': '', \
-                                                }, \
-                                 "score": 1.0, \
-                                 })
+            trigger  = ' '.join(sent[0]['tokens'][event['trigger']['position'][0]:event['trigger']['position'][1]])
+            if verb_or_not(trigger):
+                constituents.append({"start": event['trigger']['position'][0], \
+                                     "end": event['trigger']['position'][1], \
+                                     "label": "event", \
+                                     "properties": {'sentence_id': sentence_id, \
+                                                    'predicate': trigger,\
+                                                    'SenseNumber': '', \
+                                                    }, \
+                                     "score": 1.0, \
+                                     })
     
     '''start to construct ta from here'''
     ta = {}
@@ -93,16 +110,50 @@ def fullTextDuration(ta, out_f):
     except:
         print("ERROR occurs in processing " + file_name + "!")
         return 1
+
+import operator
+def order_by(origin, ee):
+    event_map = {origin: 0}
+    for relation in ee['views'][0]['viewData'][0]['relations']:
+        if relation['srcConstituent'] == origin or relation['targetConstituent'] == origin:
+            if relation['relationName'] == 'before':
+                if relation['srcConstituent'] == origin:
+                    event_map[relation['targetConstituent']] = relation['properties']['distance']
+                else:
+                    event_map[relation['srcConstituent']] = (-1) * relation['properties']['distance']
+            else:
+                if relation['srcConstituent'] == origin:
+                    event_map[relation['targetConstituent']] = (-1) * relation['properties']['distance']
+                else:
+                    event_map[relation['srcConstituent']] = relation['properties']['distance']
+                    
+    sorted_e = sorted(event_map.items(), key=operator.itemgetter(1))
     
+    return [m[0] for m in sorted_e]
+
+
 json_file = '/shared/hzhangal/Projects/zero-event-extraction/quizlet6/quizlet6_data/extracted_events.json'
 dir_path = "/shared/why16gzl/Projects/KAIROS/Quizlet/Quizlet_6/te_out/"
 
 with open(json_file) as f:
     ee = json.load(f)
+    # Test
+    #if True:
+    #    file_name = "quizlet6_data/L0C04CJ13.rsd.txt"
     for file_name in ee.keys():
         ta = ee_to_ta(file_name, ee)
-        out_f = dir_path + ta["corpusID"]
-        #pp.pprint(ta)
-        #print(ta)
+        out_f = dir_path + ta["corpusID"] + ".json"
         fullTextDuration(ta, out_f)
+        with open(out_f) as f:
+            ta = json.load(f)
+        possible_timeline = {}
+        for i in range(len(ta['views'][0]['viewData'][0]['constituents'])):
+            temp_order = repr(order_by(i, ta))
+            if temp_order not in possible_timeline.keys():
+                possible_timeline[temp_order] = 1
+            else:
+                possible_timeline[temp_order] += 1
 
+        ta['views'][0]['viewData'][0]['temporalOrder'] = max(possible_timeline.items(), key=operator.itemgetter(1))[0]
+        with open(out_f, 'w') as outfile:
+            json.dump(ta, outfile)
